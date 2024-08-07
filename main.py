@@ -4,7 +4,7 @@ from utils.utils import set_seed
 from arg_parser import parse_arguments
 from models.model_utils import get_model
 from configs import load_dataset_configs
-from models.server import Server
+from server import Server
 
 print("GPU available: ", torch.cuda.is_available())
 

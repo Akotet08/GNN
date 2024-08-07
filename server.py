@@ -6,9 +6,9 @@ from torch.utils.data import DataLoader
 
 from dataloader.bookcrossing_dataset import Book_crossing_Dataset
 from dataloader.movielense_dataset import MovieLense_Dataset
-from models.metrics import Metrics, dirichlet_energy, mean_average_distance
-from models.metrics import ranking_measure_test_set, ranking_measure_degree_test_set
-from models.metrics import compare_head_tail_rec_percentage
+from metrics import dirichlet_energy, mean_average_distance
+from metrics import ranking_measure_test_set, ranking_measure_degree_test_set
+from metrics import compare_head_tail_rec_percentage
 from utils.pretty_print import print_header
 
 
