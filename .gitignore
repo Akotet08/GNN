@@ -1,6 +1,2 @@
-data
-gowalla
-MovieLens-1m
-History
-__pychache__
-
+data_preprocessor/dataset_path.json
+/.idea
