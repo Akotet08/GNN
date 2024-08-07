@@ -1,0 +1,12 @@
+{
+  "book_crossing":
+  {
+    "raw": "/home/akotet/datasets/book_crossing/raw",
+    "processed": "/home/akotet/datasets/book_crossing/processed"
+  },
+  "movielense":
+  {
+    "raw": "/home/akotet/datasets/movielense/raw",
+    "processed": "/home/akotet/datasets/movielense/processed"
+  }
+}
