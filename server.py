@@ -21,7 +21,7 @@ class Server:
         self.device = device
 
         self.init_server()
-        # self.init_wandb()
+        self.init_wandb()
 
         self.train_loader = DataLoader(self.dataset.train_dataset, batch_size=dataset_configs['batch_size'],
                                        shuffle=True)
@@ -57,7 +57,7 @@ class Server:
 
     def run(self):
         print_header('Server is running...')
-        # self.train()
+        self.train()
 
         print_header('Testing...')
         self.evaluate(silent=False)
