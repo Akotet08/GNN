@@ -1,3 +1,4 @@
+import copy
 import torch
 import numpy as np
 from torch import Tensor
@@ -208,6 +209,8 @@ def ranking_measure_degree_test_set(pred_scores, ground_truth, k, item_degrees, 
 
 
 def compare_head_tail_rec_percentage(pred_scores, test_item, item_degrees, separate_rate, k):
+    pred_scores = copy.deepcopy(pred_scores)
+
     sorted_items = sorted(item_degrees.items(), key=lambda x: x[1])
     item_list_sorted, _ = zip(*sorted_items)
     body_length = int(len(item_list_sorted) * (1 - separate_rate))
@@ -221,6 +224,15 @@ def compare_head_tail_rec_percentage(pred_scores, test_item, item_degrees, separ
     tail_item_indices_tensor = torch.tensor(tail_item_indices, device=pred_scores.device)
     head_item_indices_tensor = torch.tensor(head_item_indices, device=pred_scores.device)
     body_item_indices_tensor = torch.tensor(body_item_indices, device=pred_scores.device)
+
+    # mask the non-test items to be zero
+    test_item_tensor = torch.tensor(test_item, device=pred_scores.device).unsqueeze(0)
+    all_indices = torch.arange(pred_scores.size(1), device=pred_scores.device).unsqueeze(1)
+
+    mask = test_item_tensor == all_indices
+    in_test_item_mask = mask.any(dim=1)
+
+    pred_scores[:, ~in_test_item_mask] = -np.inf
 
     idx_topk_part = torch.topk(pred_scores, k, dim=1, largest=True, sorted=False).indices
 
