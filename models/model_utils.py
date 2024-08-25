@@ -1,5 +1,6 @@
-from models.SimpleGCNconv import SimpleGNN
+from models.GCNConv import GCN
 from models.SimpleLightGCN import LightGCN
+from models.NGCF import NGCF
 
 
 def get_model(args, dataset_config, device):
@@ -12,9 +13,11 @@ def get_model(args, dataset_config, device):
     input_features = dataset_config['input_dim']
 
     if method_name == 'gcn':
-        return SimpleGNN(input_features, output_dim)
-    if method_name == 'lightgcn':
+        return GCN(args, num_users, num_items)
+    elif method_name == 'lightgcn':
         return LightGCN(num_users, num_items, args, device)
+    elif method_name == 'ngcf':
+        return NGCF(num_users, num_items, args, device)
     else:
         raise NotImplementedError
 

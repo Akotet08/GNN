@@ -47,6 +47,8 @@ class Server:
                 "K": self.args.k,
                 "method": self.args.method,
                 "note": self.args.note,
+                "dropout": self.args.dropout,
+
                 "batch_size": self.dataset_configs['batch_size'],
                 "epochs": self.dataset_configs['epochs'],
                 "lr": self.dataset_configs['lr'],
@@ -94,9 +96,17 @@ class Server:
             if (epoch + 1) % log_every == 0:
                 wandb.log({'epoch': epoch + 1, 'train_loss': avg_epoch_loss})
 
+        user_emb, item_emb = torch.split(embd, [self.dataset_configs['num_users'],
+                                                self.dataset_configs['num_items']])
+
+        # de_user = dirichlet_energy(embed, self.dataset.joint_adjacency_matrix_normal_spatial)
+        # de_item = dirichlet_energy(item_emb, self.dataset.joint_adjacency_matrix_normal_spatial)
+
         de = dirichlet_energy(embd, self.dataset.joint_adjacency_matrix_normal_spatial)
         mad = mean_average_distance(embd, self.dataset.joint_adjacency_matrix_normal_spatial)
-        wandb.log({'mad': mad, 'dirichlet energy': de})
+        wandb.log({'mad': mad,
+                   'user dirichlet energy': de})
+                   # 'item dirichlet energy': item_emb})
 
     def evaluate(self, silent=False):
         self.model.eval()

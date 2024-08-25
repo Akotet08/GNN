@@ -5,7 +5,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='GNN Experiments')
     parser.add_argument('--dataset', type=str, default='book_crossing', choices=['book_crossing', 'movielense'], help='Dataset name')
     parser.add_argument('--seed', type=int, default=100, help='Seed for reproducibility')
-    parser.add_argument('--gpu', type=int, default=2, help='GPU ID')
+    parser.add_argument('--gpu', type=int, default=7, help='GPU ID')
 
     parser.add_argument('--method', type=str, default='lightgcn', help='gnn method')
 
@@ -20,6 +20,9 @@ def parse_arguments():
 
     parser.add_argument('--num_layers', type=int, default=2, help='number of layers')
     parser.add_argument('--output_dim', type=int, default=512, help='output dimension')
+    parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension')
+    parser.add_argument('--dropout', type=float, default=0.5, help='dropout rate')
+
     parser.add_argument('--k', type=int, default=10, help='kth rank for metric computations')
     parser.add_argument('--separate_rate', type=float, default=0.2, help='rate to define head and tail items')
 
