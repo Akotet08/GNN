@@ -8,5 +8,15 @@
   {
     "raw": "/home/akotet/datasets/movielense/raw",
     "processed": "/home/akotet/datasets/movielense/processed"
+  },
+  "gowalla":
+  {
+    "raw":"/home/akotet/datasets/gowalla/raw",
+    "processed": "/home/akotet/datasets/gowalla/processed"
+  },
+  "cora":
+  {
+    "raw":"/home/akotet/datasets/cora/raw",
+    "processed": "/home/akotet/datasets/cora/processed"
   }
 }
