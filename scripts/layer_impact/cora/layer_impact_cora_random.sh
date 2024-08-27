@@ -9,7 +9,7 @@ do
     do
       python main.py --dataset cora \
                      --method gcn \
-                     --note layers_imapct_cora_0826_0940 \
+                     --note layers_imapct_cora_random_features_0826_1900 \
                      --hps \
                      --num_layers $layers \
                      --dropout 0 \

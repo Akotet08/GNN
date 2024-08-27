@@ -3,7 +3,8 @@ import argparse
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='GNN Experiments')
-    parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'cornell'], help='Dataset name')
+    parser.add_argument('--dataset', type=str, default='cora',
+                        choices=['cora', 'citeseer', 'pubmed', 'movielense'], help='Dataset name')
     parser.add_argument('--seed', type=int, default=0, help='Seed for reproducibility')
     parser.add_argument('--gpu', type=int, default=7, help='GPU ID')
 

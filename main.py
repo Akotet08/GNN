@@ -9,7 +9,7 @@ from arg_parser import parse_arguments
 import torch_geometric.transforms as T
 from models.model_utils import get_model
 from configs import load_dataset_configs
-from torch_geometric.datasets import Planetoid
+from torch_geometric.datasets import Planetoid, IGMCDataset, MovieLens
 from metrics import dirichlet_energy, mean_average_distance
 
 print("GPU available: ", torch.cuda.is_available())
@@ -85,8 +85,13 @@ def main():
         T.TargetIndegree(),
     ])
     path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset)
-    dataset = Planetoid(path, dataset, transform=transform)
-    data = dataset[0]
+
+    if dataset in ['cora', 'citeseer', 'pubmed']:
+        dataset = Planetoid(path, dataset, transform=transform)
+        data = dataset[0]
+    elif dataset in ['movielense']:
+        dataset = MovieLens(path, transform=transform)
+        data = dataset.data
 
     if args.random_features:
         features = get_random_features(data)
