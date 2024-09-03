@@ -21,7 +21,7 @@ def parse_arguments():
     parser.add_argument('--num_layers', type=int, default=2, help='number of layers')
     parser.add_argument('--output_dim', type=int, default=512, help='output dimension')
     parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension')
-    parser.add_argument('--dropout', type=float, default=0.5, help='dropout rate')
+    parser.add_argument('--dropout', type=float, default=0, help='dropout rate')
 
     parser.add_argument('--k', type=int, default=10, help='kth rank for metric computations')
     parser.add_argument('--separate_rate', type=float, default=0.2, help='rate to define head and tail items')

@@ -7,11 +7,11 @@ do
     layers=$((outer + idx))
     python main.py --dataset book_crossing \
                    --method lightgcn \
-                   --note layers_imapct_book_crossing_0825_2000 \
+                   --note layers_imapct_book_crossing_0903_1020 \
                    --hps \
                    --num_layers $layers \
                    --dropout 0 \
-                   --epochs 200 \
+                   --epochs 50 \
                    --gpu $gpu &
   done
   wait

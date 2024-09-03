@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 
 class BaseDataset:
     def __init__(self, verbose=False):
+        self.second_hop_adjacency_matrix = None
         self.joint_adjacency_matrix_normal_spatial = None
         self.joint_adjacency_matrix = None
         self.interact_matrix = None
@@ -71,6 +72,18 @@ class BaseDataset:
         self.joint_adjacency_matrix_normal_spatial = torch.sparse_coo_tensor(
             torch.stack([row_indices, col_indices], dim=0), joint_adjacency_matrix_normal_value,
             (self.user_num + self.item_num, self.user_num + self.item_num)).coalesce()
+
+        second_hop_adjacency_matrix = torch.sparse.mm(self.joint_adjacency_matrix, self.joint_adjacency_matrix).coalesce()
+        indices = second_hop_adjacency_matrix._indices()
+        values = second_hop_adjacency_matrix._values()
+
+        new_values = torch.ones_like(values)
+
+        # Create a new sparse tensor with the same indices but with all values set to 1
+        second_hop_adjacency_matrix = torch.sparse_coo_tensor(indices, new_values,
+                                                              second_hop_adjacency_matrix.shape).coalesce()
+
+        self.second_hop_adjacency_matrix = second_hop_adjacency_matrix
 
 
 class TrainDataset(Dataset):

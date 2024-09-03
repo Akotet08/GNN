@@ -2,6 +2,7 @@ import torch
 import wandb
 import numpy as np
 from tqdm import tqdm
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from dataloader.bookcrossing_dataset import Book_crossing_Dataset
@@ -10,6 +11,8 @@ from metrics import dirichlet_energy, mean_average_distance
 from metrics import ranking_measure_test_set, ranking_measure_degree_test_set
 from metrics import compare_head_tail_rec_percentage
 from utils.pretty_print import print_header
+from collections import defaultdict
+from sklearn.manifold import TSNE
 
 
 class Server:
@@ -99,14 +102,45 @@ class Server:
         user_emb, item_emb = torch.split(embd, [self.dataset_configs['num_users'],
                                                 self.dataset_configs['num_items']])
 
-        # de_user = dirichlet_energy(embed, self.dataset.joint_adjacency_matrix_normal_spatial)
-        # de_item = dirichlet_energy(item_emb, self.dataset.joint_adjacency_matrix_normal_spatial)
+        # project for visualizations
+        with torch.no_grad():
+            projection_tse = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=3)
+            user_emb = projection_tse.fit_transform(user_emb.cpu().detach().numpy())
+            item_emb = projection_tse.fit_transform(item_emb.cpu().detach().numpy())
 
-        de = dirichlet_energy(embd, self.dataset.joint_adjacency_matrix_normal_spatial)
-        mad = mean_average_distance(embd, self.dataset.joint_adjacency_matrix_normal_spatial)
-        wandb.log({'mad': mad,
-                   'user dirichlet energy': de})
-                   # 'item dirichlet energy': item_emb})
+        edge_index = self.dataset.joint_adjacency_matrix_normal_spatial.coalesce().indices()
+        adj_dict = {}
+        for i, j in edge_index.t().tolist():
+            if i not in adj_dict:
+                adj_dict[i] = []
+            adj_dict[i].append(j)
+
+        de_first_hop = dirichlet_energy(embd, adj_dict=adj_dict)
+        mad_first_hop = mean_average_distance(embd, adj_dict=adj_dict)
+
+        edge_index = self.dataset.second_hop_adjacency_matrix.coalesce().indices()
+        adj_dict = defaultdict(list)
+        for idx in tqdm(range(edge_index.size(1))):
+            i = edge_index[0, idx].item()
+            j = edge_index[1, idx].item()
+            adj_dict[i].append(j)
+
+        adj_dict = dict(adj_dict)
+
+        de_second_hop = dirichlet_energy(embd, adj_dict=adj_dict)
+        mad_second_hop = mean_average_distance(embd, adj_dict=adj_dict)
+        user_table = wandb.Table(data=user_emb.tolist(), columns=["x", "y"])
+        item_table = wandb.Table(data=item_emb.tolist(), columns=["x", "y"])
+
+        wandb.log({'mad_first_hop': mad_first_hop,
+                   'dirichlet energy_first_hop': de_first_hop,
+                   'mad_second_hop': mad_second_hop,
+                   'dirichlet energy_second_hop': de_second_hop,
+                   'user embedding': wandb.plot.scatter(user_table, "x", "y",
+                                                        title="User embedding Scatter Plot"),
+                   'item embedding': wandb.plot.scatter(item_table, "x", "y",
+                                                        title="Item embedding Scatter Plot")
+                   })
 
     def evaluate(self, silent=False):
         self.model.eval()
@@ -139,7 +173,7 @@ class Server:
                     ground_truth,
                     self.args.k,
                     test_items)
-                head_ndcg, head_recall, tail_ndcg, tail_recall, body_ndcg, body_recall = ranking_measure_degree_test_set (
+                head_ndcg, head_recall, tail_ndcg, tail_recall, body_ndcg, body_recall = ranking_measure_degree_test_set(
                     predicted_score,
                     ground_truth,
                     self.args.k,
@@ -179,7 +213,7 @@ class Server:
                       f'Body NDCG@{self.args.k}: {np.mean(body_ndcg_batch):.6f} \n',
                       f'Head Percentage@{self.args.k}: {np.mean(head_per_batch):.6f} \n',
                       f'Tail Percentage@{self.args.k}: {np.mean(tail_per_batch):.6f} \n',
-                      f'Body Percentage@{self.args.k}: {np.mean(body_per_batch):.6f} \n',)
+                      f'Body Percentage@{self.args.k}: {np.mean(body_per_batch):.6f} \n', )
 
             wandb.log({f'NDCG@{self.args.k}': np.mean(ndcg),
                        f'Recall@{self.args.k}': np.mean(recall),
@@ -192,7 +226,7 @@ class Server:
                        f'Body Recall@{self.args.k}': np.mean(body_recall_batch),
                        f'Head Percentage@{self.args.k}': np.mean(head_per_batch),
                        f'Tail Percentage@{self.args.k}': np.mean(tail_per_batch),
-                       f'Body Percentage@{self.args.k}': np.mean(body_per_batch),})
+                       f'Body Percentage@{self.args.k}': np.mean(body_per_batch), })
 
     def get_optimizer(self, model):
         optimizer_name = self.dataset_configs['optimizer']

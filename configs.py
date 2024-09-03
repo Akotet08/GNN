@@ -17,8 +17,8 @@ movielense = {
     # Data parameters
     'name': 'movielense',
     'input_dim': 21,  # 4 feature columns
-    'num_users': 6040,
-    'num_items': 3883,
+    'num_users': 6040, # FUll: 6040,
+    'num_items':  3883, # Full: 3883,
 
     # Training parameters
     "batch_size": 1024,
