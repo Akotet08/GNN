@@ -2,6 +2,9 @@ import torch
 import wandb
 import numpy as np
 import os.path as osp
+
+from sklearn.manifold import TSNE
+
 import utils.pretty_print as pp
 import torch.nn.functional as F
 from utils.utils import set_seed
@@ -136,10 +139,17 @@ def main():
                        'train_acc': avg_epoch_acc,
                        'test_acc': avg_epoch_test_acc})
 
+    with torch.no_grad():
+        projection_tse = TSNE(n_components=2, learning_rate='auto', init='pca', perplexity=10)
+        proj_emb = projection_tse.fit_transform(embedding.cpu().detach().numpy())
+
+    proj_table = wandb.Table(data=proj_emb.tolist(), columns=["x", "y"])
+
     de = dirichlet_energy(embedding, adj_dict=adj_dict)
     mad = mean_average_distance(embedding, adj_dict=adj_dict)
     wandb.log({'mad': mad,
-               'dirichlet energy': de})
+               'dirichlet energy': de,
+               'projection': wandb.plot.scatter(proj_table, "x", "y", title='embedding scatter plot')})
 
 
 if __name__ == '__main__':

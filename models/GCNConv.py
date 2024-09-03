@@ -4,7 +4,7 @@ from torch_geometric.nn import GCNConv
 
 
 class Net(torch.nn.Module):
-    def __init__(self, args, num_features, num_classes):
+    def __init__(self, args, num_nodes, num_features, num_classes):
         super().__init__()
         self.args = args
 
@@ -14,6 +14,7 @@ class Net(torch.nn.Module):
             self.convs.append(GCNConv(args.hidden_dim, args.hidden_dim))
 
         self.conv2 = GCNConv(args.hidden_dim, num_classes)
+        # self.embedding = torch.nn.Embedding(num_nodes, num_features)
 
     def forward(self, data):
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
@@ -22,3 +23,5 @@ class Net(torch.nn.Module):
             x = F.elu(conv(x, edge_index, edge_attr))
         x = self.conv2(x, edge_index, edge_attr)
         return F.log_softmax(x, dim=1)
+
+
