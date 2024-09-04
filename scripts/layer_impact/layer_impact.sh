@@ -5,13 +5,13 @@ do
   do
     gpu=$(( (gpu + 1) % 8 ))
     layers=$((outer + idx))
-    python main.py --dataset book_crossing \
+    python main.py --dataset movielense_small \
                    --method lightgcn \
-                   --note layers_imapct_book_crossing_0903_1020 \
+                   --note layers_imapct_movielense_small_0904_1300 \
                    --hps \
                    --num_layers $layers \
                    --dropout 0 \
-                   --epochs 50 \
+                   --epochs 100 \
                    --gpu $gpu &
   done
   wait

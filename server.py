@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 from dataloader.bookcrossing_dataset import Book_crossing_Dataset
 from dataloader.movielense_dataset import MovieLense_Dataset
+from dataloader.movielense_small_dataset import MovieLenseSmallDataset
 from metrics import dirichlet_energy, mean_average_distance
 from metrics import ranking_measure_test_set, ranking_measure_degree_test_set
 from metrics import compare_head_tail_rec_percentage
@@ -36,6 +37,8 @@ class Server:
             self.dataset = Book_crossing_Dataset()
         elif self.dataset_configs['name'] == 'movielense':
             self.dataset = MovieLense_Dataset()
+        elif self.dataset_configs['name'] == 'movielense_small':
+            self.dataset = MovieLenseSmallDataset()
         else:
             raise NotImplementedError("Dataset not implemented")
         self.model.to(self.device)
@@ -104,9 +107,9 @@ class Server:
 
         # project for visualizations
         with torch.no_grad():
-            projection_tse = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=3)
-            user_emb = projection_tse.fit_transform(user_emb.cpu().detach().numpy())
-            item_emb = projection_tse.fit_transform(item_emb.cpu().detach().numpy())
+            projection_tse = TSNE(n_components=2, learning_rate='auto', init='pca', perplexity=10)
+            user_emb_projected = projection_tse.fit_transform(user_emb.cpu().detach().numpy())
+            item_emb_projected = projection_tse.fit_transform(item_emb.cpu().detach().numpy())
 
         edge_index = self.dataset.joint_adjacency_matrix_normal_spatial.coalesce().indices()
         adj_dict = {}
@@ -129,13 +132,25 @@ class Server:
 
         de_second_hop = dirichlet_energy(embd, adj_dict=adj_dict)
         mad_second_hop = mean_average_distance(embd, adj_dict=adj_dict)
-        user_table = wandb.Table(data=user_emb.tolist(), columns=["x", "y"])
-        item_table = wandb.Table(data=item_emb.tolist(), columns=["x", "y"])
+        user_table = wandb.Table(data=user_emb_projected.tolist(), columns=["x", "y"])
+        item_table = wandb.Table(data=item_emb_projected.tolist(), columns=["x", "y"])
+
+        # differnt measures
+        ones_all = torch.ones((len(embd), 1), device=embd.device)
+        ones_user = torch.ones((len(user_emb), 1), device=user_emb.device)
+        ones_item = torch.ones((len(item_emb), 1), device=item_emb.device)
+
+        node_similarity_all = torch.linalg.matrix_norm(embd - (torch.matmul(ones_all.t(), embd) / len(embd)))
+        node_similarity_user = torch.linalg.matrix_norm(user_emb - (torch.matmul(ones_user.t(), user_emb) / len(user_emb)))
+        node_similarity_item = torch.linalg.matrix_norm(item_emb - (torch.matmul(ones_item.t(), item_emb) / len(item_emb)))
 
         wandb.log({'mad_first_hop': mad_first_hop,
                    'dirichlet energy_first_hop': de_first_hop,
                    'mad_second_hop': mad_second_hop,
                    'dirichlet energy_second_hop': de_second_hop,
+                   'node similarity all': node_similarity_all.item(),
+                   'node similarity user': node_similarity_user.item(),
+                   'node similarity item': node_similarity_item.item(),
                    'user embedding': wandb.plot.scatter(user_table, "x", "y",
                                                         title="User embedding Scatter Plot"),
                    'item embedding': wandb.plot.scatter(item_table, "x", "y",

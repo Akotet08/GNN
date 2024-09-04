@@ -28,11 +28,28 @@ movielense = {
     "optimizer": "sgd",
 }
 
+movielense_small = {
+    # Data parameters
+    'name': 'movielense_small',
+    'input_dim': 404,
+    'num_users': 610,
+    'num_items':  9742,
+
+    # Training parameters
+    "batch_size": 1024,
+    "epochs": 20,
+    "lr": 0.1,
+    "weight_decay": 0.00001,
+    "optimizer": "sgd",
+}
+
 
 def load_dataset_configs(dataset_name):
     if dataset_name == 'book_crossing':
         return book_crossing
     elif dataset_name == 'movielense':
         return movielense
+    elif dataset_name == 'movielense_small':
+        return movielense_small
     else:
         raise ValueError(f"Unknown or unimplemented dataset: {dataset_name}")

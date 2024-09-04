@@ -3,7 +3,7 @@ import argparse
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='GNN Experiments')
-    parser.add_argument('--dataset', type=str, default='book_crossing', choices=['book_crossing', 'movielense'], help='Dataset name')
+    parser.add_argument('--dataset', type=str, default='book_crossing', choices=['book_crossing', 'movielense', 'movielense_small'], help='Dataset name')
     parser.add_argument('--seed', type=int, default=100, help='Seed for reproducibility')
     parser.add_argument('--gpu', type=int, default=7, help='GPU ID')
 
@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument('--optimizer', type=str, default='sgd', help='Optimizer')
 
     parser.add_argument('--num_layers', type=int, default=2, help='number of layers')
-    parser.add_argument('--output_dim', type=int, default=512, help='output dimension')
+    parser.add_argument('--output_dim', type=int, default=64, help='output dimension')
     parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension')
     parser.add_argument('--dropout', type=float, default=0, help='dropout rate')
 
