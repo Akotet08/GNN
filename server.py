@@ -77,6 +77,8 @@ class Server:
         log_every = 1
         print_every = 1
         optimizer = self.get_optimizer(self.model)
+
+        self.model.log_embedding_tse('initial', self.dataset.joint_adjacency_matrix_normal_spatial.to(self.device))
         for epoch in range(epochs):
             epoch_loss_list = []
             for batch_idx, (user_idx, pos_idx, neg_idx) in enumerate(tqdm(self.train_loader)):
@@ -87,11 +89,6 @@ class Server:
                                         self.dataset.joint_adjacency_matrix_normal_spatial.to(self.device))
 
                 loss.backward()
-                # Print gradients
-                # for name, param in self.model.named_parameters():
-                #     if param.grad is not None:
-                #         print(f'{name} - Grad mean: {param.grad.mean().item()}, Grad std: {param.grad.std().item()}')
-
                 optimizer.step()
                 epoch_loss_list.append(loss.item())
 
@@ -105,11 +102,15 @@ class Server:
         user_emb, item_emb = torch.split(embd, [self.dataset_configs['num_users'],
                                                 self.dataset_configs['num_items']])
 
+        user_mask = np.ones((self.dataset_configs['num_users'], 1))
+        item_mask = np.zeros((self.dataset_configs['num_items'], 1))
+        mask = np.concatenate([user_mask, item_mask], axis=0)
+
         # project for visualizations
         with torch.no_grad():
             projection_tse = TSNE(n_components=2, learning_rate='auto', init='pca', perplexity=10)
-            user_emb_projected = projection_tse.fit_transform(user_emb.cpu().detach().numpy())
-            item_emb_projected = projection_tse.fit_transform(item_emb.cpu().detach().numpy())
+            embed_projected = projection_tse.fit_transform(embd.cpu().detach().numpy())
+            embed_projected = np.concatenate([embed_projected, mask], axis=1)
 
         edge_index = self.dataset.joint_adjacency_matrix_normal_spatial.coalesce().indices()
         adj_dict = {}
@@ -132,8 +133,7 @@ class Server:
 
         de_second_hop = dirichlet_energy(embd, adj_dict=adj_dict)
         mad_second_hop = mean_average_distance(embd, adj_dict=adj_dict)
-        user_table = wandb.Table(data=user_emb_projected.tolist(), columns=["x", "y"])
-        item_table = wandb.Table(data=item_emb_projected.tolist(), columns=["x", "y"])
+        embed_table = wandb.Table(data=embed_projected.tolist(), columns=["x", "y", "is_user"])
 
         # differnt measures
         ones_all = torch.ones((len(embd), 1), device=embd.device)
@@ -151,11 +151,11 @@ class Server:
                    'node similarity all': node_similarity_all.item(),
                    'node similarity user': node_similarity_user.item(),
                    'node similarity item': node_similarity_item.item(),
-                   'user embedding': wandb.plot.scatter(user_table, "x", "y",
-                                                        title="User embedding Scatter Plot"),
-                   'item embedding': wandb.plot.scatter(item_table, "x", "y",
-                                                        title="Item embedding Scatter Plot")
+                   'all embedding': wandb.plot.scatter(embed_table, "x", "y",
+                                                       title="All embedding Scatter plot"),
                    })
+        
+        self.model.log_embedding_tse('final', self.dataset.joint_adjacency_matrix_normal_spatial.to(self.device))
 
     def evaluate(self, silent=False):
         self.model.eval()

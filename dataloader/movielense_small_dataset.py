@@ -1,9 +1,10 @@
 import torch
+import numpy as np
 from random import choice
 from torch.utils.data import Dataset
 from torch_geometric.datasets import MovieLens
 from dataloader.base_dataset import BaseDataset, TestDataset
-from torch_geometric.utils import remove_self_loops, to_undirected
+from torch_geometric.utils import to_scipy_sparse_matrix
 
 
 def sample_edges_for_test(data, test_ratio=0.4):
@@ -41,12 +42,12 @@ class MovieLenseSmallDataset(BaseDataset):
         num_edges = data[('user', 'rates', 'movie')].edge_index.size(1)
         data[('user', 'rates', 'movie')].edge_attr = torch.ones((num_edges, 1), dtype=torch.float)
 
-        self.data, self.test_edges = sample_edges_for_test(data)
-
-        # self.train_interaction, self.test_interaction, self.item_features, configs = None, None, None, None, None
-
         self.user_num = data['user'].num_nodes
         self.item_num = data['movie'].num_nodes
+
+        data = self.connected_components(data)
+
+        self.data, self.test_edges = sample_edges_for_test(data)
 
         self.item_list = list(range(self.item_num))
         self.user_list = list(range(self.user_num))
@@ -59,6 +60,57 @@ class MovieLenseSmallDataset(BaseDataset):
 
         self.train_dataset = TrainDataset(self.data, self.item_list, self.train_user_set)
         self.test_dataset = TestDataset(self.test_user_set, self.item_num)
+
+    def connected_components(self, data, component_idx=1):
+        import scipy.sparse as sp
+
+        def to_bipartite_adj(data):
+            edge_index = data[('user', 'rates', 'movie')].edge_index
+            num_users = data['user'].num_nodes
+            num_movies = data['movie'].num_nodes
+
+            # Shift movie indices by the number of users to avoid collisions
+            edge_index_adjusted = edge_index.clone()
+            edge_index_adjusted[1] += num_users
+
+            # Create adjacency matrix (no edge weights)
+            adj = to_scipy_sparse_matrix(edge_index_adjusted, num_nodes=num_users + num_movies)
+            return adj, num_users, num_movies
+
+        # Create bipartite adjacency matrix
+        adj, num_users, num_movies = to_bipartite_adj(data)
+
+        # Step 2: Use scipy to find connected components
+        num_components, component_labels = sp.csgraph.connected_components(adj)
+
+        # Step 3: Select the desired component (use component_idx to select)
+        unique_components, count = np.unique(component_labels, return_counts=True)
+        if component_idx >= num_components:
+            raise ValueError(f"Component {component_idx} out of bounds. Only {num_components} components found.")
+
+        # Select the desired component (default is largest, but can be changed via component_idx)
+        desired_component = unique_components[
+            count.argsort()[-1]]  # Select the `component_idx`-th largest component
+        subset_np = component_labels == desired_component  # Create a mask for the selected component
+
+        # Step 4: Convert to torch and match device
+        user_mask = subset_np[:num_users]
+        movie_mask = subset_np[num_users:]
+
+        # Step 6: Convert masks to tensors
+        user_subset = torch.from_numpy(user_mask).to(data[('user', 'rates', 'movie')].edge_index.device, torch.bool)
+        movie_subset = torch.from_numpy(movie_mask).to(data[('user', 'rates', 'movie')].edge_index.device, torch.bool)
+
+        # Step 7: Create the subset_dict for subgraph
+        subset_dict = {
+            'user': user_subset,
+            'movie': movie_subset
+        }
+
+        # Step 8: Call the `subgraph` method to get the induced subgraph
+        subgraph = data.subgraph(subset_dict)
+
+        return subgraph
 
     def _generate_set(self):
         user_to_item_edge_type = ('user', 'rates', 'movie')

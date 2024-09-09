@@ -37,7 +37,7 @@ movielense_small = {
 
     # Training parameters
     "batch_size": 1024,
-    "epochs": 20,
+    "epochs": 50,
     "lr": 0.1,
     "weight_decay": 0.00001,
     "optimizer": "sgd",

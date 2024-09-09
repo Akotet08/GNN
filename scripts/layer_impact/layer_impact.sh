@@ -1,13 +1,13 @@
-for outer in 2 4 6
+for outer in 1 3 5 7
 do
   gpu=-1
   for idx in 0 1
   do
     gpu=$(( (gpu + 1) % 8 ))
-    layers=$((outer + idx))
+    layers=$(((outer + idx)*10))
     python main.py --dataset movielense_small \
                    --method lightgcn \
-                   --note layers_imapct_movielense_small_0904_1300 \
+                   --note layers_imapct_movielense_small_0909_0200 \
                    --hps \
                    --num_layers $layers \
                    --dropout 0 \
