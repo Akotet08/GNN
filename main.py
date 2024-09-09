@@ -37,6 +37,7 @@ def init_wandb(args, dataset_configs):
         }
     )
 
+
 def get_random_features(data):
     n, m = data.x.shape
     features = []
@@ -115,6 +116,7 @@ def main():
     model, data = model.to(device), data.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
+    model.log_embedding_tse('initial', data)
     epoch_loss_list = []
     epoch_train_acc_list = []
     epoch_test_acc_list = []
@@ -139,18 +141,13 @@ def main():
                        'train_acc': avg_epoch_acc,
                        'test_acc': avg_epoch_test_acc})
 
-    with torch.no_grad():
-        projection_tse = TSNE(n_components=2, learning_rate='auto', init='pca', perplexity=10)
-        proj_emb = projection_tse.fit_transform(embedding.cpu().detach().numpy())
-
-    proj_table = wandb.Table(data=proj_emb.tolist(), columns=["x", "y"])
-
     de = dirichlet_energy(embedding, adj_dict=adj_dict)
     mad = mean_average_distance(embedding, adj_dict=adj_dict)
     wandb.log({'mad': mad,
                'dirichlet energy': de,
-               'projection': wandb.plot.scatter(proj_table, "x", "y", title='embedding scatter plot')})
+               })
 
+    model.log_embedding_tse('final', data)
 
 if __name__ == '__main__':
     pp.print_string(' == GNN == ')
