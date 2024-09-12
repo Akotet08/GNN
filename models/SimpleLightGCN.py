@@ -1,9 +1,12 @@
 import copy
+
+import numpy as np
 import torch
 import wandb
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 from torch_geometric.utils import dropout_edge
 
 
@@ -32,7 +35,8 @@ class LightGCN(nn.Module):
 
     @torch.no_grad()
     def log_embedding_tse(self, stage, edge_index):
-        projection_tse = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=10)
+        # projection_tse = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=10)
+        projection_pca = PCA(n_components=2)
 
         cur_embedding = torch.cat([self.user_id_Embeddings.weight, self.item_id_Embeddings.weight], dim=0)
         all_embeddings = [cur_embedding]
@@ -45,20 +49,37 @@ class LightGCN(nn.Module):
         all_embeddings = torch.mean(all_embeddings, dim=0, keepdim=False)
         user_embedding, item_embedding = torch.split(all_embeddings, [self.user_num, self.item_num])
 
-        user_projected = projection_tse.fit_transform(user_embedding.cpu().detach().numpy())
-        item_projected = projection_tse.fit_transform(item_embedding.cpu().detach().numpy())
+        user_projected = projection_pca.fit_transform(user_embedding.cpu().detach().numpy())
+        user_projected_variance = np.linalg.norm(projection_pca.explained_variance_)
 
-        user_table = wandb.Table(data=user_projected.tolist(), columns=["x", "y"])
-        item_table = wandb.Table(data=item_projected.tolist(), columns=["x", "y"])
+        item_projected = projection_pca.fit_transform(item_embedding.cpu().detach().numpy())
+        item_projected_variance = np.linalg.norm(projection_pca.explained_variance_)
+
+        all_embeddings_projected = projection_pca.fit_transform(all_embeddings.cpu().detach().numpy())
+        all_embeddings_projected_variance = np.linalg.norm(projection_pca.explained_variance_)
+
+        user_projected_with_label = [[x, y, f"{self.L}"] for x, y in user_projected.tolist()]
+        item_projected_with_label = [[x, y, f"{self.L}"] for x, y in item_projected.tolist()]
+        all_embeddings_with_label = [[x, y, f"{self.L}"] for x, y in all_embeddings_projected.tolist()]
+
+        user_table = wandb.Table(data=user_projected_with_label, columns=["x", "y", "num_layers"])
+        item_table = wandb.Table(data=item_projected_with_label, columns=["x", "y", "num_layers"])
+        all_embeddings_table = wandb.Table(data=all_embeddings_with_label, columns=["x", "y", "num_layers"])
 
         user_title = 'user embedding ' + stage
         item_title = 'item embedding ' + stage
+        all_embeddings_title = 'all embedding ' + stage
 
         wandb.log({
             f'user embedding_{stage}': wandb.plot.scatter(user_table, "x", "y",
-                                                         title=user_title),
+                                                          title=user_title),
             f'item embedding_{stage}': wandb.plot.scatter(item_table, "x", "y",
-                                                         title=item_title)
+                                                          title=item_title),
+            f'all embedding_{stage}': wandb.plot.scatter(all_embeddings_table, "x", "y",
+                                                         title=all_embeddings_title),
+            f'user variance {stage}': user_projected_variance,
+            f'item variance {stage}': item_projected_variance,
+            f'all embedding variance': all_embeddings_projected_variance
         })
 
     def propagate(self, edge_index, cur_embedding):
@@ -79,7 +100,24 @@ class LightGCN(nn.Module):
         """
         # Apply edge dropout if specified
         if self.dropout > 0:
-            edge_index_dropped, _ = dropout_edge(edge_index, p=self.dropout, force_undirected=True)
+            edge_index_dropped, _ = dropout_edge(copy.deepcopy(edge_index.indices()), self.dropout)
+            original_indices = edge_index.indices()
+            original_values = edge_index.values()
+
+            # Find the edges that were kept after dropout
+            dropped_edges_mask = torch.zeros(original_indices.size(1), dtype=torch.bool)
+            dropped_edges_mask[torch.unique(edge_index_dropped, dim=1, return_inverse=True)[1]] = True
+
+            # Select the values corresponding to the dropped edges
+            new_values = original_values[dropped_edges_mask]
+
+            # Reconstruct the sparse tensor
+            edge_index_dropped = torch.sparse_coo_tensor(
+                indices=edge_index_dropped,
+                values=new_values,
+                size=edge_index.size(),
+                device=edge_index.device
+            )
         else:
             edge_index_dropped = edge_index
 

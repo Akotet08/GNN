@@ -1,6 +1,7 @@
 from models.GCNConv import GCN
 from models.SimpleLightGCN import LightGCN
 from models.NGCF import NGCF
+from models.matrix_factorization import MatrixFactorization
 
 
 def get_model(args, dataset_config, device):
@@ -18,6 +19,8 @@ def get_model(args, dataset_config, device):
         return LightGCN(num_users, num_items, args, device)
     elif method_name == 'ngcf':
         return NGCF(num_users, num_items, args, device)
+    elif method_name == 'matrix_factorization':
+        return MatrixFactorization(num_users, num_items, args, device)
     else:
         raise NotImplementedError
 

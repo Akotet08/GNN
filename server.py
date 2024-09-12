@@ -106,12 +106,6 @@ class Server:
         item_mask = np.zeros((self.dataset_configs['num_items'], 1))
         mask = np.concatenate([user_mask, item_mask], axis=0)
 
-        # project for visualizations
-        with torch.no_grad():
-            projection_tse = TSNE(n_components=2, learning_rate='auto', init='pca', perplexity=10)
-            embed_projected = projection_tse.fit_transform(embd.cpu().detach().numpy())
-            embed_projected = np.concatenate([embed_projected, mask], axis=1)
-
         edge_index = self.dataset.joint_adjacency_matrix_normal_spatial.coalesce().indices()
         adj_dict = {}
         for i, j in edge_index.t().tolist():
@@ -133,7 +127,6 @@ class Server:
 
         de_second_hop = dirichlet_energy(embd, adj_dict=adj_dict)
         mad_second_hop = mean_average_distance(embd, adj_dict=adj_dict)
-        embed_table = wandb.Table(data=embed_projected.tolist(), columns=["x", "y", "is_user"])
 
         # differnt measures
         ones_all = torch.ones((len(embd), 1), device=embd.device)
@@ -144,15 +137,15 @@ class Server:
         node_similarity_user = torch.linalg.matrix_norm(user_emb - (torch.matmul(ones_user.t(), user_emb) / len(user_emb)))
         node_similarity_item = torch.linalg.matrix_norm(item_emb - (torch.matmul(ones_item.t(), item_emb) / len(item_emb)))
 
-        wandb.log({'mad_first_hop': mad_first_hop,
+        wandb.log(
+            {
+                'mad_first_hop': mad_first_hop,
                    'dirichlet energy_first_hop': de_first_hop,
                    'mad_second_hop': mad_second_hop,
                    'dirichlet energy_second_hop': de_second_hop,
                    'node similarity all': node_similarity_all.item(),
                    'node similarity user': node_similarity_user.item(),
                    'node similarity item': node_similarity_item.item(),
-                   'all embedding': wandb.plot.scatter(embed_table, "x", "y",
-                                                       title="All embedding Scatter plot"),
                    })
         
         self.model.log_embedding_tse('final', self.dataset.joint_adjacency_matrix_normal_spatial.to(self.device))

@@ -1,7 +1,11 @@
 import os
 import json
+import torch
+import numpy as np
 import pandas as pd
+from torch_geometric.utils import to_scipy_sparse_matrix
 from dataloader.base_dataset import BaseDataset, TrainDataset, TestDataset
+
 
 SAMPLING_RATIO = 0.4
 
@@ -53,6 +57,44 @@ class Book_crossing_Dataset(BaseDataset):
 
         self.train_dataset = TrainDataset(self.train_interaction, self.item_list, self.train_user_set)
         self.test_dataset = TestDataset(self.test_user_set, self.item_num)
+
+        # self.connected_components()
+
+    def connected_components(self, component_idx=1):
+        import scipy.sparse as sp
+
+        def to_bipartite_adj():
+            edge_index = torch.Tensor([self.train_interaction['user_id'].tolist(), self.train_interaction['item_id'].tolist()])
+            num_users = self.user_num
+            num_movies = self.item_num
+
+            # Shift movie indices by the number of users to avoid collisions
+            edge_index[1] += num_users
+
+            # Create adjacency matrix (no edge weights)
+            adj = to_scipy_sparse_matrix(edge_index, num_nodes=num_users + num_movies)
+            return adj, num_users, num_movies
+
+        # Create bipartite adjacency matrix
+        adj, num_users, num_movies = to_bipartite_adj()
+
+        # Step 2: Use scipy to find connected components
+        num_components, component_labels = sp.csgraph.connected_components(adj)
+
+        # Step 3: Select the desired component (use component_idx to select)
+        unique_components, count = np.unique(component_labels, return_counts=True)
+        if component_idx >= num_components:
+            raise ValueError(f"Component {component_idx} out of bounds. Only {num_components} components found.")
+
+        # Select the desired component (default is largest, but can be changed via component_idx)
+        desired_component = unique_components[
+            count.argsort()[-1]]  # Select the `component_idx`-th largest component
+        subset_np = component_labels == desired_component  # Create a mask for the selected component
+
+        # Step 4: Convert to torch and match device
+        user_mask = subset_np[:num_users]
+        movie_mask = subset_np[num_users:]
+
 
 
 if __name__ == '__main__':
